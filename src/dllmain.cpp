@@ -1,5 +1,8 @@
 // dllmain.cpp : Defines the entry point for the DLL application.
 
+#include "DiscordManager.h"
+
+#include <discord_rpc.h>
 #include <lua.hpp>
 #include <windows.h> // Note this is included BEFORE ScriptUtils cause otherwise it will overwrite some macros like RGB()
 #include <ScriptUtils.h> // ScriptUtils.h isn't necessary for a pure lua dll but it's useful to have the native api at your disposal as well
@@ -7,15 +10,6 @@
 #include <filesystem>
 #include <format>
 #include <memory>
-
-#define DISCORDPP_IMPLEMENTATION
-#include "discordpp.h"
-#include <iostream>
-#include <thread>
-#include <atomic>
-#include <string>
-#include <functional>
-#include <csignal>
 
 // It can be useful to know where exactly the file is from C++, depending on the structure of your mod you can use this
 // to relative path to things like config files or anything else you need to access
@@ -139,6 +133,25 @@ __asm
 }
 */
 
+namespace Lua
+{
+    static std::unique_ptr<DiscordManager> rpc; // just to make sure it's only initialized once and inside of Start() we can use a smart pointer,
+    // if you want to destroy it before the program ends you can use the reset() method
+
+    static int Start(lua_State* L)
+    {
+        const char* appID = luaL_checkstring(L, 1); // not sure what the appID will be but we get it from lua
+        rpc = std::make_unique<DiscordManager>(appID);
+        return 0;
+    }
+
+    static int Update(lua_State* L)
+    {
+        rpc->Update();
+        return 0;
+    }
+}
+
 
 // Define the export table for the lua library, in order for lua to properly load it,
 // you must name this function luaopen_[name_of_your_library] and this must match the name of
@@ -148,6 +161,8 @@ extern "C" int __declspec(dllexport) luaopen_library(lua_State* L)
     // If you want to reduce the repetitive typing you could use a macro like this
     // #define LUA_EXPORT(name) { #name, name },
     constexpr luaL_Reg EXPORT_TABLE[] = {
+        { "Start", Lua::Start },
+        { "Update", Lua::Update },
         { "Hello", Hello },
         { "Add", Add },
         { "SimulateCallback", SimulateCallback },
