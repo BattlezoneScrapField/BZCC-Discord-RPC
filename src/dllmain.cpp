@@ -8,6 +8,15 @@
 #include <format>
 #include <memory>
 
+#define DISCORDPP_IMPLEMENTATION
+#include "discordpp.h"
+#include <iostream>
+#include <thread>
+#include <atomic>
+#include <string>
+#include <functional>
+#include <csignal>
+
 // It can be useful to know where exactly the file is from C++, depending on the structure of your mod you can use this
 // to relative path to things like config files or anything else you need to access
 const std::filesystem::path dllPath = []()
