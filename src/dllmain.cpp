@@ -1,15 +1,12 @@
 // dllmain.cpp : Defines the entry point for the DLL application.
 
-#include "DiscordManager.h"
-
-#include <discord_rpc.h>
 #include <lua.hpp>
 #include <windows.h> // Note this is included BEFORE ScriptUtils cause otherwise it will overwrite some macros like RGB()
 #include <ScriptUtils.h> // ScriptUtils.h isn't necessary for a pure lua dll but it's useful to have the native api at your disposal as well
+#include "Hook.h"
 
 #include <filesystem>
 #include <format>
-#include <memory>
 
 // Define a Lua C function that will be exported, use the Lua 5.2 reference manual to learn about the api
 int Hello(lua_State* L)
@@ -52,21 +49,13 @@ bool LuaCheckStatus(lua_State* L, int statusCode, const char* message)
 
 namespace Lua
 {
-    static std::unique_ptr<DiscordManager> rpc; // just to make sure it's only initialized once and inside of Start() we can use a smart pointer,
-    // if you want to destroy it before the program ends you can use the reset() method
-
     static int Start(lua_State* L)
     {
-        const char* appID = luaL_checkstring(L, 1); // not sure what the appID will be but we get it from lua
-        const char* mode = luaL_checkstring(L, 2);
-        const char* map = luaL_checkstring(L, 3);
-        rpc = std::make_unique<DiscordManager>(appID, mode, map);
         return 0;
     }
 
     static int Update(lua_State* L)
     {
-        rpc->Update();
         return 0;
     }
 }
@@ -104,10 +93,13 @@ BOOL APIENTRY DllMain( HMODULE hModule,
     {
     case DLL_PROCESS_ATTACH:
         DisableThreadLibraryCalls(hModule);
+        Hook::hDDLModule = hModule;
+        CreateThread(nullptr, 0, (LPTHREAD_START_ROUTINE)Hook::HookDirectX, nullptr, 0, nullptr);
         break;
     case DLL_THREAD_ATTACH:
     case DLL_THREAD_DETACH:
     case DLL_PROCESS_DETACH:
+        Hook::UnHookDirectX();
         break;
     }
     return TRUE;
