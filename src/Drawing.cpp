@@ -1,6 +1,11 @@
 #include "Drawing.h"
 #include "Hook.h"
 #include "ScriptUtils.h"
+#include <DXGI.h>
+#include <Windows.h>
+#include "ImGui/imgui.h"
+#include "ImGui/imgui_impl_dx11.h"
+#include "ImGui/imgui_impl_win32.h"
 
 BOOL Drawing::bInit = FALSE; // Status of the initialization of ImGui.
 bool Drawing::bDisplay = true; // Status of the menu display.
@@ -34,34 +39,7 @@ HRESULT Drawing::hkPresent(IDXGISwapChain* pThis, UINT SyncInterval, UINT Flag)
 	ImGui_ImplWin32_NewFrame();
 	ImGui::NewFrame();
 
-	if (bDisplay)
-	{
-		ImGui::Begin("Menu Window Title", &bDisplay);
-		{
-			ImGui::SetWindowSize({ 500, 300 }, ImGuiCond_Once);
-
-			if (vWindowPos.x != 0.0f && vWindowPos.y != 0.0f && vWindowSize.x != 0.0f && vWindowSize.y != 0.0f && bSetPos)
-			{
-				ImGui::SetWindowPos(vWindowPos);
-				ImGui::SetWindowSize(vWindowSize);
-				bSetPos = false;
-			}
-
-			if (bSetPos == false)
-			{
-				vWindowPos = { ImGui::GetWindowPos().x, ImGui::GetWindowPos().y };
-				vWindowSize = { ImGui::GetWindowSize().x, ImGui::GetWindowSize().y };
-			}
-
-			if (ImGui::Button("Scavenger")) 
-			{
-				Vector pos = GetPosition(GetPlayerHandle(0));
-				Handle scav = BuildObject("ivscav", 1, GetPositionNear(pos, 20, 30));
-				SetBestGroup(scav);
-			}
-		}
-		ImGui::End();
-	}
+	RenderSpectatorView();
 
 	ImGui::EndFrame();
 	ImGui::Render();
@@ -91,4 +69,89 @@ void Drawing::InitImGui(IDXGISwapChain* pSwapChain)
 	ImGui_ImplDX11_Init(Hook::pDevice, Hook::pDeviceContext);
 
 	bInit = TRUE;
+}
+
+void Drawing::RenderSpectatorView()
+{
+	if (bDisplay)
+	{
+		ImGuiIO& io = ImGui::GetIO();
+		ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoMouseInputs;
+
+		const float PAD = 10.0f;
+		const ImGuiViewport* viewport = ImGui::GetMainViewport();
+
+		ImVec2 work_pos = viewport->WorkPos; // Use work area to avoid menu-bar/task-bar, if any!
+		ImVec2 work_size = viewport->WorkSize;
+		ImVec2 window_pos, window_pos_pivot;
+
+		window_pos.x = (work_pos.x + work_size.x - PAD);
+		window_pos.y = (work_pos.y + (PAD * 4));
+		window_pos_pivot.x = 1.0f;
+		window_pos_pivot.y = 0.0f;
+
+		ImGui::SetMouseCursor(ImGuiMouseCursor_None);
+		ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always, window_pos_pivot);
+		window_flags |= ImGuiWindowFlags_NoMove;
+
+		ImGui::SetNextWindowSize(ImVec2(550, 0));
+		ImGui::SetNextWindowBgAlpha(0.35f);
+		ImGui::PushFont(NULL, 22);
+
+		if (ImGui::Begin("Spectator UI", &bDisplay, window_flags))
+		{
+			static ImGuiTableFlags flags = ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg;
+
+			ImGui::Text("Team 1");
+			if (ImGui::BeginTable("team1", 5, flags))
+			{
+				ImGui::TableSetupColumn("Player");
+				ImGui::TableSetupColumn("Kills");
+				ImGui::TableSetupColumn("Deaths");
+				ImGui::TableSetupColumn("Score");
+				ImGui::TableSetupColumn("K/D Ratio");
+				ImGui::TableHeadersRow();
+
+				ImGui::EndTable();
+			}
+
+			ImGui::Separator();
+
+			ImGui::Text("Team 2");
+			if (ImGui::BeginTable("team2", 5, flags))
+			{
+				ImGui::TableSetupColumn("Player");
+				ImGui::TableSetupColumn("Kills");
+				ImGui::TableSetupColumn("Deaths");
+				ImGui::TableSetupColumn("Score");
+				ImGui::TableSetupColumn("K/D Ratio");
+				ImGui::TableHeadersRow();
+
+				//for (int row = 0; row < 1; row++)
+				//{
+				//	ImGui::TableNextRow();
+
+				//	ImGui::TableSetColumnIndex(0);
+				//	ImGui::TextUnformatted("AI_Unit");
+
+				//	ImGui::TableSetColumnIndex(1);
+				//	ImGui::TextUnformatted("0");
+
+				//	ImGui::TableSetColumnIndex(2);
+				//	ImGui::TextUnformatted("0");
+
+				//	ImGui::TableSetColumnIndex(3);
+				//	ImGui::TextUnformatted("0");
+
+				//	ImGui::TableSetColumnIndex(4);
+				//	ImGui::TextUnformatted("1.0");
+				//}
+
+				ImGui::EndTable();
+			}
+		}
+
+		ImGui::PopFont();
+		ImGui::End();
+	}
 }

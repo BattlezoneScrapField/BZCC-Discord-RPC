@@ -17,6 +17,7 @@ private:
 	static ImVec2 vWindowSize;
 
 	static void InitImGui(IDXGISwapChain* pSwapChain);
+	static void RenderSpectatorView();
 };
 
 #endif
